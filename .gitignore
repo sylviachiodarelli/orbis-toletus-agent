@@ -1,0 +1,40 @@
+## Build results
+bin/
+obj/
+out/
+
+## IDE / OS
+.vs/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## Secrets
+appsettings.json
+appsettings.Production.json
+**/secrets.json
+
+## Test / coverage
+TestResults/
+coverage/
+*.trx
+*.coverage
+*.coveragexml
+
+## NuGet
+*.nupkg
+*.snupkg
+project.lock.json
+project.fragment.lock.json
+artifacts/
+dist/
+publish/
+**/agent-payload.zip
+
+## Misc
+*.log
+*.tmp
+.DS_Store
+Thumbs.db

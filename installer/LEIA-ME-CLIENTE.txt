@@ -1,0 +1,54 @@
+Orbis Toletus Agent — Instalação na academia
+============================================
+
+Requisitos
+----------
+- Windows 10 ou 11
+- PC na mesma rede Wi‑Fi/cabo que a catraca Toletus
+- Conta de Administrador no Windows (para instalar o serviço)
+- API key e código do dispositivo cadastrados no Orbisfit
+
+Passo a passo
+-------------
+1. Extraia este ZIP em uma pasta (ex.: C:\OrbisToletusAgent)
+
+2. Clique com o botão direito em PowerShell → "Executar como administrador"
+
+3. Na pasta extraída, execute:
+
+   Set-ExecutionPolicy -Scope Process Bypass -Force
+   .\install.ps1
+
+4. Abra no navegador deste PC:
+
+   http://127.0.0.1:5080
+
+5. Crie a senha de administrador local
+
+6. Preencha:
+   - URL Orbisfit (https://orbisfit.com)
+   - API key (Orbisfit → Integrações → Catracas)
+   - Código do dispositivo
+   - IP da catraca na rede local (ex.: 192.168.0.220)
+
+7. Clique em "Testar Orbisfit" e "Testar catraca", depois "Salvar configuração"
+
+8. No painel, confirme que SDK aparece como "Conectado"
+
+Verificação
+-----------
+Na pasta extraída, como Administrador:
+
+   .\preflight-check.ps1
+
+Desinstalar
+-----------
+PowerShell como Administrador, na pasta extraída:
+
+   .\uninstall.ps1
+   .\uninstall.ps1 -RemoveFiles
+
+Suporte
+-------
+Logs:  %ProgramData%\Orbis\ToletusAgent\logs\
+Status: %ProgramData%\Orbis\ToletusAgent\health.json
