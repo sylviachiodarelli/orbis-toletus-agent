@@ -18,10 +18,10 @@ jobs:
           dotnet-version: 8.0.x
 
       - name: Restore
-        run: dotnet restore
+        run: dotnet restore tests/Orbis.ToletusAgent.Tests/Orbis.ToletusAgent.Tests.csproj
 
       - name: Build
-        run: dotnet build --no-restore -c Release
+        run: dotnet build tests/Orbis.ToletusAgent.Tests/Orbis.ToletusAgent.Tests.csproj --no-restore -c Release
 
       - name: Test
-        run: dotnet test --no-build -c Release
+        run: dotnet test tests/Orbis.ToletusAgent.Tests/Orbis.ToletusAgent.Tests.csproj --no-build -c Release
