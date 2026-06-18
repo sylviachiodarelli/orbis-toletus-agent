@@ -13,7 +13,7 @@
 #>
 param(
     [string]$Repo = "sylviachiodarelli/orbis-toletus-agent",
-    [string]$Tag = "v0.1.0",
+    [string]$Tag = "v0.1.2",
     [switch]$SkipBuild
 )
 
@@ -26,7 +26,8 @@ if (-not $SkipBuild) {
     & (Join-Path $PSScriptRoot "build-release.ps1")
 }
 
-$SetupExe = Join-Path $RepoRoot "dist\OrbisToletusAgent-Setup-v0.1.1.exe"
+$Version = $Tag.TrimStart('v')
+$SetupExe = Join-Path $RepoRoot "dist\OrbisToletusAgent-Setup-v$Version.exe"
 if (-not (Test-Path $SetupExe)) {
     throw "Instalador não encontrado: $SetupExe. Rode build-release.ps1 primeiro."
 }
@@ -41,7 +42,7 @@ Write-Host "Criando tag $Tag (dispara GitHub Actions release) ..."
 git tag -a $Tag -m "Orbis Toletus Agent $Tag" -f
 git push origin $Tag -f
 
-$DownloadUrl = "https://github.com/$Repo/releases/download/$Tag/OrbisToletusAgent-Setup-v0.1.0.exe"
+$DownloadUrl = "https://github.com/$Repo/releases/download/$Tag/OrbisToletusAgent-Setup-v$Version.exe"
 
 Write-Host ""
 Write-Host "Próximo passo no Dokploy (Orbisfit):" -ForegroundColor Green

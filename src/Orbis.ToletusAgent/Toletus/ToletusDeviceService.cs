@@ -62,6 +62,7 @@ public sealed class ToletusDeviceService : IToletusDeviceService, IDisposable
             AttachHandlers(_board);
 
             await Task.Run(() => _board.Connect(), cancellationToken).ConfigureAwait(false);
+            await WaitUntilConnectedAsync(_board, TimeSpan.FromSeconds(30), cancellationToken).ConfigureAwait(false);
 
             _board.GetFirmwareVersion();
             if (string.IsNullOrWhiteSpace(serial))
@@ -150,6 +151,30 @@ public sealed class ToletusDeviceService : IToletusDeviceService, IDisposable
         {
             _gate.Release();
             _gate.Dispose();
+        }
+    }
+
+    private static async Task WaitUntilConnectedAsync(
+        LiteNet2Board board,
+        TimeSpan timeout,
+        CancellationToken cancellationToken)
+    {
+        var deadline = DateTimeOffset.UtcNow + timeout;
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (board.Connected)
+            {
+                return;
+            }
+
+            await Task.Delay(250, cancellationToken).ConfigureAwait(false);
+        }
+
+        if (!board.Connected)
+        {
+            throw new TimeoutException(
+                "A catraca não confirmou conexão LiteNet2 a tempo. Verifique IP, série e se outro software Toletus está aberto.");
         }
     }
 
