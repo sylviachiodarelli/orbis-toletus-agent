@@ -26,7 +26,7 @@ if (-not $SkipBuild) {
     & (Join-Path $PSScriptRoot "build-release.ps1")
 }
 
-$SetupExe = Join-Path $RepoRoot "dist\OrbisToletusAgent-Setup-v0.1.0.exe"
+$SetupExe = Join-Path $RepoRoot "dist\OrbisToletusAgent-Setup-v0.1.1.exe"
 if (-not (Test-Path $SetupExe)) {
     throw "Instalador não encontrado: $SetupExe. Rode build-release.ps1 primeiro."
 }

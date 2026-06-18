@@ -5,7 +5,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Version>0.1.0</Version>
+    <Version>0.1.1</Version>
     <UserSecretsId>dotnet-Orbis.ToletusAgent-2f06b9e0-a5be-46ae-aaa1-f673874a4083</UserSecretsId>
   </PropertyGroup>
 
@@ -22,6 +22,7 @@
     <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
     <PackageReference Include="Serilog.Formatting.Compact" Version="3.0.0" />
     <PackageReference Include="Toletus.LiteNet2" Version="8.26.1" />
+    <PackageReference Include="Toletus.Pack.Core" Version="8.15.1" />
   </ItemGroup>
 
   <ItemGroup>
