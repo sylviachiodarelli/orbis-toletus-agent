@@ -17,6 +17,16 @@ Write-Host "Installing Orbis Toletus Agent from package..."
 Write-Host "Source: $PackageDir"
 Write-Host "Target: $InstallDir"
 
+$ExistingService = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+if ($ExistingService) {
+    Write-Host "Stopping existing service..."
+    Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
+    $ExistingService.WaitForStatus("Stopped", (New-TimeSpan -Seconds 60))
+}
+
+Get-Process -Name "Orbis.ToletusAgent" -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+Start-Sleep -Seconds 2
+
 New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
 Copy-Item -Path (Join-Path $PackageDir "*") -Destination $InstallDir -Recurse -Force
 
@@ -28,21 +38,15 @@ if (-not (Test-Path $ConfigPath) -and (Test-Path $ExamplePath)) {
 
 $ExePath = Join-Path $InstallDir "Orbis.ToletusAgent.exe"
 
-$ExistingService = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
-if ($ExistingService) {
-    Write-Host "Stopping existing service..."
-    Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
-    sc.exe delete $ServiceName | Out-Null
-    Start-Sleep -Seconds 2
+if (-not $ExistingService) {
+    Write-Host "Registering Windows service..."
+    New-Service `
+        -Name $ServiceName `
+        -BinaryPathName "`"$ExePath`"" `
+        -DisplayName "Orbis Toletus Agent" `
+        -Description "Ponte de acesso Toletus LiteNet2 para Orbisfit" `
+        -StartupType Automatic | Out-Null
 }
-
-Write-Host "Registering Windows service..."
-New-Service `
-    -Name $ServiceName `
-    -BinaryPathName "`"$ExePath`"" `
-    -DisplayName "Orbis Toletus Agent" `
-    -Description "Ponte de acesso Toletus LiteNet2 para Orbisfit" `
-    -StartupType Automatic | Out-Null
 
 $scResult = sc.exe config $ServiceName start= delayed-auto 2>&1
 if ($LASTEXITCODE -ne 0) {

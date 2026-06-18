@@ -55,6 +55,8 @@ public static class AgentWindowsInstaller
             throw new FileNotFoundException("Orbis.ToletusAgent.exe não encontrado no pacote.", agentExe);
         }
 
+        StopRunningAgent(progress);
+
         progress.Report("Copiando para Program Files...");
         Directory.CreateDirectory(InstallDir);
         CopyDirectory(sourceDir, InstallDir);
@@ -67,8 +69,7 @@ public static class AgentWindowsInstaller
         }
 
         var installedExe = Path.Combine(InstallDir, "Orbis.ToletusAgent.exe");
-        RemoveExistingService(progress);
-        RegisterService(installedExe, progress);
+        EnsureServiceRegistered(installedExe, progress);
         StartService(progress);
     }
 
@@ -94,37 +95,96 @@ public static class AgentWindowsInstaller
             var relative = Path.GetRelativePath(sourceDir, file);
             var destination = Path.Combine(targetDir, relative);
             Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
-            File.Copy(file, destination, overwrite: true);
+            CopyWithRetry(file, destination);
         }
     }
 
-    private static void RemoveExistingService(IProgress<string> progress)
+    private static void CopyWithRetry(string source, string destination, int attempts = 5)
+    {
+        for (var attempt = 1; attempt <= attempts; attempt++)
+        {
+            try
+            {
+                File.Copy(source, destination, overwrite: true);
+                return;
+            }
+            catch (IOException) when (attempt < attempts)
+            {
+                Thread.Sleep(1000);
+            }
+        }
+
+        File.Copy(source, destination, overwrite: true);
+    }
+
+    private static void StopRunningAgent(IProgress<string> progress)
+    {
+        using var existing = ServiceController.GetServices()
+            .FirstOrDefault(service => string.Equals(service.ServiceName, ServiceName, StringComparison.OrdinalIgnoreCase));
+
+        if (existing is not null)
+        {
+            progress.Report("Parando serviço existente...");
+            try
+            {
+                if (existing.Status != ServiceControllerStatus.Stopped
+                    && existing.Status != ServiceControllerStatus.StopPending)
+                {
+                    existing.Stop();
+                    existing.WaitForStatus(ServiceControllerStatus.Stopped, TimeSpan.FromSeconds(60));
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException(
+                    "Não foi possível parar o serviço OrbisToletusAgent. Feche o instalador, execute como Administrador: Stop-Service OrbisToletusAgent -Force",
+                    ex);
+            }
+        }
+
+        progress.Report("Encerrando processos do agente...");
+        KillAgentProcesses();
+        Thread.Sleep(1500);
+    }
+
+    private static void KillAgentProcesses()
+    {
+        foreach (var process in Process.GetProcessesByName("Orbis.ToletusAgent"))
+        {
+            try
+            {
+                if (process.HasExited)
+                {
+                    continue;
+                }
+
+                process.Kill(entireProcessTree: true);
+                process.WaitForExit(10_000);
+            }
+            catch
+            {
+                // Best effort — service stop should have released most handles.
+            }
+            finally
+            {
+                process.Dispose();
+            }
+        }
+    }
+
+    private static void EnsureServiceRegistered(string exePath, IProgress<string> progress)
     {
         using var existing = ServiceController.GetServices()
             .FirstOrDefault(service => string.Equals(service.ServiceName, ServiceName, StringComparison.OrdinalIgnoreCase));
 
         if (existing is null)
         {
+            RegisterService(exePath, progress);
             return;
         }
 
-        progress.Report("Removendo serviço anterior...");
-        try
-        {
-            if (existing.Status != ServiceControllerStatus.Stopped
-                && existing.Status != ServiceControllerStatus.StopPending)
-            {
-                existing.Stop();
-                existing.WaitForStatus(ServiceControllerStatus.Stopped, TimeSpan.FromSeconds(30));
-            }
-        }
-        catch (Exception ex)
-        {
-            throw new InvalidOperationException("Não foi possível parar o serviço existente.", ex);
-        }
-
-        RunSc($"delete {ServiceName}");
-        Thread.Sleep(2000);
+        progress.Report("Atualizando serviço Windows...");
+        RunSc($"config {ServiceName} binPath= \"{exePath}\"");
     }
 
     private static void RegisterService(string exePath, IProgress<string> progress)
