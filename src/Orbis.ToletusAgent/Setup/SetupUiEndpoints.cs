@@ -345,7 +345,7 @@ public static class SetupUiEndpoints
 
             <section id="view-dashboard" class="hidden">
               <div class="toolbar">
-                <button class="secondary" id="goto-setup">Configuração123</button>
+                <button class="secondary" id="goto-setup">Configuração</button>
                 <button class="danger" id="logout">Sair</button>
               </div>
               <div class="grid" id="metrics"></div>
