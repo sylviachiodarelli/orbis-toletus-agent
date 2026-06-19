@@ -218,9 +218,12 @@ x-api-key: {ApiKey}
   "enrollid": "50",
   "device_id": "CATRACA-01",
   "transaction_id": "toletus-7218-1739123456789",
-  "offline_mode": "fail_closed"
+  "offline_mode": "fail_closed",
+  "access_source": "crm"
 }
 ```
+
+Campo opcional `access_source`: `crm` | `totalpass` | `wellhub`. O agente **ignora** este campo; a validação de planos parceiros (TotalPass / Wellhub) é feita exclusivamente na API Orbisfit. Alunos pass podem digitar **CPF** no teclado Toletus ou usar digital vinculada no CRM.
 
 Campos de compatibilidade v1 (`autorizado`, `permitido`, `resultado`) devem ser aceitos pelo agente como fallback.
 
