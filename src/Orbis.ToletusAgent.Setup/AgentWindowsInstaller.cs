@@ -70,6 +70,7 @@ public static class AgentWindowsInstaller
 
         var installedExe = Path.Combine(InstallDir, "Orbis.ToletusAgent.exe");
         EnsureServiceRegistered(installedExe, progress);
+        ConfigureServiceRecovery(progress);
         StartService(progress);
     }
 
@@ -211,6 +212,12 @@ public static class AgentWindowsInstaller
 
         service.Start();
         service.WaitForStatus(ServiceControllerStatus.Running, TimeSpan.FromSeconds(30));
+    }
+
+    private static void ConfigureServiceRecovery(IProgress<string> progress)
+    {
+        progress.Report("Configurando reinício automático do serviço Windows...");
+        RunSc($"failure {ServiceName} reset= 86400 actions= restart/60000/restart/60000/restart/60000");
     }
 
     private static Process RunSc(string arguments)

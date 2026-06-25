@@ -47,12 +47,15 @@ public static class ServiceCollectionExtensions
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<IToletusDeviceService, ToletusDeviceService>();
         services.AddSingleton<IAgentHealthState, AgentHealthState>();
+        services.AddSingleton<AgentRecoveryState>();
+        services.AddSingleton<IAgentRecoveryService, AgentRecoveryService>();
         services.AddSingleton<IAgentActivityStore, AgentActivityStore>();
         services.AddSingleton<IOfflinePolicyCache, OfflinePolicyCache>();
         services.AddSingleton<AccessOrchestrator>();
         services.AddSingleton<IAccessOrchestrator>(sp => sp.GetRequiredService<AccessOrchestrator>());
         services.AddHostedService(sp => sp.GetRequiredService<AccessOrchestrator>());
         services.AddHostedService<AgentHealthService>();
+        services.AddHostedService<AgentSelfHealingHostedService>();
         services.AddHostedService<HostLifetimeLogger>();
         services.AddHostedService<AgentHostedService>();
         services.AddHostedService<ToletusConnectionHostedService>();

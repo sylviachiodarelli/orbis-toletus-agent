@@ -10,7 +10,7 @@ $ErrorActionPreference = "Stop"
 $RepoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 $ProjectPath = Join-Path $RepoRoot "src\Orbis.ToletusAgent\Orbis.ToletusAgent.csproj"
 $SetupProjectPath = Join-Path $RepoRoot "src\Orbis.ToletusAgent.Setup\Orbis.ToletusAgent.Setup.csproj"
-$Version = "0.1.2"
+$Version = "0.1.3"
 
 if ([string]::IsNullOrWhiteSpace($AgentOutputDir)) {
     $AgentOutputDir = Join-Path $RepoRoot "dist\agent-payload"

@@ -13,7 +13,7 @@
 #>
 param(
     [string]$Repo = "sylviachiodarelli/orbis-toletus-agent",
-    [string]$Tag = "v0.1.2",
+    [string]$Tag = "v0.1.3",
     [switch]$SkipBuild
 )
 

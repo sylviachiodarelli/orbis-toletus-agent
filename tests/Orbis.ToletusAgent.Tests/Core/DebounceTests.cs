@@ -77,6 +77,8 @@ public class DebounceTests
 
         public Task DisconnectAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
+        public Task ForceReconnectAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+
         public Task ReleaseTurnstileAsync(string? message = null, CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
 

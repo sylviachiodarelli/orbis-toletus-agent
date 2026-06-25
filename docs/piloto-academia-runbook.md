@@ -68,8 +68,11 @@ Preencha a coluna **Resultado** após cada cenário.
 Get-Service OrbisToletusAgent
 Get-Content "$env:ProgramData\Orbis\ToletusAgent\health.json"
 Get-ChildItem "$env:ProgramData\Orbis\ToletusAgent\logs" | Sort-Object LastWriteTime -Descending | Select-Object -First 3
-Restart-Service OrbisToletusAgent
 ```
+
+**Preferir o painel** http://127.0.0.1:5080 → **Reiniciar aplicativo** ou **Reconectar catraca**.
+
+Suporte técnico (se necessário): `Restart-Service OrbisToletusAgent`
 
 Filtrar log por transação (PowerShell 7+):
 
@@ -92,8 +95,8 @@ Get-Content "$env:ProgramData\Orbis\ToletusAgent\logs\agent-*.json" |
 
 | Sintoma | Verificar |
 |---------|-----------|
-| UI não abre em :5080 | Serviço rodando? `Agent:StatusUiEnabled` = true |
-| `sdkConnected: false` | IP correto na UI; ping/TCP porta 7878; firewall |
+| UI não abre em :5080 | Aguarde ~1 min (recuperação automática) ou reinstale o agente; serviço `OrbisToletusAgent` |
+| `sdkConnected: false` | Botão **Reconectar catraca** no painel; IP correto; ping `192.168.0.220`; outro software Toletus fechado |
 | HTTP 401 | API key errada ou catraca inativa no Orbisfit |
 | Sempre negado offline | `Agent:DefaultOfflineMode` = `fail_closed` (esperado sem internet) |
 | Duas chamadas HTTP em 1s | `Agent:DebounceMs` (padrão 3000) |

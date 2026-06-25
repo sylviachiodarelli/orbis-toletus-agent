@@ -14,6 +14,8 @@ public interface IToletusDeviceService
 
     Task DisconnectAsync(CancellationToken cancellationToken = default);
 
+    Task ForceReconnectAsync(CancellationToken cancellationToken = default);
+
     Task ReleaseTurnstileAsync(string? message = null, CancellationToken cancellationToken = default);
 
     Task DenyTurnstileAsync(string? message = null, CancellationToken cancellationToken = default);

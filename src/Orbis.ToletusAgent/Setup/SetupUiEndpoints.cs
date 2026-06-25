@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Orbis.ToletusAgent.Configuration;
 using Orbis.ToletusAgent.Core;
@@ -62,6 +63,8 @@ public static class SetupUiEndpoints
         app.MapPost("/api/setup/test-orbis", TestOrbis);
         app.MapPost("/api/setup/test-toletus", TestToletus);
         app.MapGet("/api/status", BuildStatusResponse);
+        app.MapPost("/api/agent/reconnect-turnstile", ReconnectTurnstile);
+        app.MapPost("/api/agent/restart", RestartAgent);
     }
 
     private static bool IsPublicApiPath(PathString path) =>
@@ -166,7 +169,7 @@ public static class SetupUiEndpoints
         return Results.Ok(new
         {
             ok = true,
-            message = "Configuração salva. Reinicie o serviço se a conexão com a catraca não atualizar em alguns segundos."
+            message = "Configuração salva. A conexão com a catraca será atualizada automaticamente em alguns segundos."
         });
     }
 
@@ -202,11 +205,13 @@ public static class SetupUiEndpoints
         IOfflinePolicyCache offlinePolicyCache,
         IAgentActivityStore activityStore,
         IAgentConfigurationService configurationService,
+        AgentRecoveryState recoveryState,
         IOptions<AgentOptions> agentOptions,
         IOptions<ToletusOptions> toletusOptions)
     {
         var agent = agentOptions.Value;
         var toletus = toletusOptions.Value;
+        var (disconnectedSince, reconnectAttempts) = recoveryState.Snapshot();
 
         var payload = new
         {
@@ -219,11 +224,40 @@ public static class SetupUiEndpoints
             lastSuccessfulValidationAt = healthState.LastSuccessfulValidationAt,
             offlineMode = offlinePolicyCache.GetEffectiveOfflineMode(),
             healthFilePath = agent.HealthFilePath,
+            selfHealingEnabled = agent.SelfHealingEnabled,
+            lastRecoveryMessage = recoveryState.LastRecoveryMessage,
+            lastRecoveryAt = recoveryState.LastRecoveryAt,
+            sdkDisconnectedSince = disconnectedSince,
+            reconnectAttempts,
             timestamp = DateTimeOffset.UtcNow,
             recentAccess = activityStore.GetRecent(50)
         };
 
         return Results.Json(payload, JsonOptions);
+    }
+
+    private static async Task<IResult> ReconnectTurnstile(
+        IAgentRecoveryService recoveryService,
+        CancellationToken cancellationToken)
+    {
+        var result = await recoveryService.ReconnectTurnstileAsync(cancellationToken).ConfigureAwait(false);
+        return Results.Json(
+            new { ok = result.Success, message = result.Message, sdkConnected = result.SdkConnected },
+            JsonOptions);
+    }
+
+    private static IResult RestartAgent(
+        IAgentRecoveryService recoveryService,
+        IHostApplicationLifetime lifetime)
+    {
+        var result = recoveryService.ScheduleApplicationRestart();
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(750).ConfigureAwait(false);
+            lifetime.StopApplication();
+        });
+
+        return Results.Json(new { ok = true, message = result.Message }, JsonOptions);
     }
 
     private static void SetSessionCookie(HttpContext context, SetupSessionService sessions)
@@ -346,8 +380,11 @@ public static class SetupUiEndpoints
             <section id="view-dashboard" class="hidden">
               <div class="toolbar">
                 <button class="secondary" id="goto-setup">Configuração</button>
+                <button class="secondary" id="reconnect-turnstile">Reconectar catraca</button>
+                <button class="secondary" id="restart-agent">Reiniciar aplicativo</button>
                 <button class="danger" id="logout">Sair</button>
               </div>
+              <div id="dashboard-message" class="message hidden"></div>
               <div class="grid" id="metrics"></div>
               <h2>Tentativas recentes</h2>
               <table>
@@ -482,19 +519,33 @@ public static class SetupUiEndpoints
               return "debounced";
             }
 
+            function showDashboardMessage(text, type) {
+              showMessage("dashboard-message", text, type);
+            }
+
             async function refreshDashboard() {
               const data = await api("/api/status");
               window.__agentVersion = data.agentVersion;
               document.getElementById("subtitle").textContent =
                 "Atualizado em " + fmtTime(data.timestamp) + " · v" + data.agentVersion;
+              const healing = data.selfHealingEnabled
+                ? "automática ativa"
+                : "desligada";
               document.getElementById("metrics").innerHTML = `
                 <div class="metric"><div class="label">Catraca</div><div class="value">${data.turnstileIp}</div></div>
                 <div class="metric"><div class="label">SDK</div><div class="value ${data.sdkConnected ? "ok" : "bad"}">${data.sdkConnected ? "Conectado" : "Desconectado"}</div></div>
                 <div class="metric"><div class="label">Firmware</div><div class="value">${data.firmwareVersion || "n/a"}</div></div>
                 <div class="metric"><div class="label">Serial</div><div class="value">${data.serialNumber || "n/a"}</div></div>
                 <div class="metric"><div class="label">Offline</div><div class="value">${data.offlineMode}</div></div>
+                <div class="metric"><div class="label">Recuperação</div><div class="value">${healing}</div></div>
                 <div class="metric"><div class="label">Última validação OK</div><div class="value">${fmtTime(data.lastSuccessfulValidationAt)}</div></div>
               `;
+              if (data.lastRecoveryMessage) {
+                showDashboardMessage(
+                  (data.lastRecoveryAt ? fmtTime(data.lastRecoveryAt) + " — " : "") + data.lastRecoveryMessage,
+                  data.sdkConnected ? "success" : ""
+                );
+              }
               const rows = data.recentAccess || [];
               const tbody = document.getElementById("access-rows");
               if (!rows.length) {
@@ -591,6 +642,47 @@ public static class SetupUiEndpoints
             document.getElementById("logout").addEventListener("click", async () => {
               await api("/api/setup/logout", { method: "POST", body: "{}" });
               window.location.href = "/login";
+            });
+
+            document.getElementById("reconnect-turnstile").addEventListener("click", async () => {
+              try {
+                const result = await api("/api/agent/reconnect-turnstile", { method: "POST", body: "{}" });
+                showDashboardMessage(result.message, result.sdkConnected ? "success" : "error");
+                await refreshDashboard();
+              } catch (error) {
+                showDashboardMessage(error.message, "error");
+              }
+            });
+
+            document.getElementById("restart-agent").addEventListener("click", async () => {
+              if (!window.confirm("Reiniciar o aplicativo? A tela pode ficar indisponível por até 1 minuto.")) {
+                return;
+              }
+
+              showDashboardMessage("Reiniciando o agente... aguarde.", "success");
+              try {
+                await api("/api/agent/restart", { method: "POST", body: "{}" });
+              } catch {
+                // A conexão pode cair antes da resposta — isso é esperado.
+              }
+
+              let attempts = 0;
+              const poll = window.setInterval(async () => {
+                attempts += 1;
+                try {
+                  await fetch("/api/setup/state");
+                  window.clearInterval(poll);
+                  window.location.reload();
+                } catch {
+                  if (attempts >= 40) {
+                    window.clearInterval(poll);
+                    showDashboardMessage(
+                      "Se a tela não voltar, peça ao suporte para reinstalar o agente.",
+                      "error"
+                    );
+                  }
+                }
+              }, 3000);
             });
 
             bootstrapApp();

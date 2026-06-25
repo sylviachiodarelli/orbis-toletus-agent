@@ -61,6 +61,12 @@ if ($LASTEXITCODE -ne 0) {
     Write-Warning "Could not set delayed-auto startup (service will use Automatic): $scResult"
 }
 
+Write-Host "Configuring automatic service recovery..."
+sc.exe failure $ServiceName reset= 86400 actions= restart/60000/restart/60000/restart/60000 | Out-Null
+if ($LASTEXITCODE -ne 0) {
+    Write-Warning "Could not configure service recovery actions."
+}
+
 Write-Host ""
 Write-Host "Installation complete."
 Write-Host "1. Run: Start-Service $ServiceName"

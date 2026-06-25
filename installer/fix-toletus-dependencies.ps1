@@ -56,5 +56,5 @@ Write-Host ""
 Write-Host "Se sdkConnected ainda for false, veja o log:" -ForegroundColor Yellow
 Write-Host '  Select-String -Path "$env:ProgramData\Orbis\ToletusAgent\logs\agent-*.json" -Pattern "Failed to connect|Exception" | Select -Last 5'
 Write-Host ""
-Write-Host "Recomendado: reinstalar v0.1.2 completo:" -ForegroundColor Yellow
-Write-Host "  https://github.com/sylviachiodarelli/orbis-toletus-agent/releases/download/v0.1.2/OrbisToletusAgent-Setup-v0.1.2.exe"
+Write-Host "Recomendado: reinstalar v0.1.3 completo:" -ForegroundColor Yellow
+Write-Host "  https://github.com/sylviachiodarelli/orbis-toletus-agent/releases/download/v0.1.3/OrbisToletusAgent-Setup-v0.1.3.exe"

@@ -97,21 +97,44 @@ public sealed class ToletusDeviceService : IToletusDeviceService, IDisposable
 
         try
         {
-            if (_board is null)
-            {
-                return;
-            }
-
-            DetachHandlers(_board);
-            await Task.Run(() => _board.Close(), cancellationToken).ConfigureAwait(false);
-            _board = null;
-
-            _logger.LogInformation("Disconnected from Toletus board at {TurnstileIp}.", Options.Ip);
+            await DisconnectCoreAsync(cancellationToken).ConfigureAwait(false);
         }
         finally
         {
             _gate.Release();
         }
+    }
+
+    public async Task ForceReconnectAsync(CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+
+        try
+        {
+            await DisconnectCoreAsync(cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+
+        await ConnectAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task DisconnectCoreAsync(CancellationToken cancellationToken)
+    {
+        if (_board is null)
+        {
+            return;
+        }
+
+        DetachHandlers(_board);
+        await Task.Run(() => _board.Close(), cancellationToken).ConfigureAwait(false);
+        _board = null;
+
+        _logger.LogInformation("Disconnected from Toletus board at {TurnstileIp}.", Options.Ip);
     }
 
     public Task ReleaseTurnstileAsync(string? message = null, CancellationToken cancellationToken = default)
@@ -248,16 +271,46 @@ public sealed class ToletusDeviceService : IToletusDeviceService, IDisposable
             status,
             board.Ip);
 
-        if (status != BoardConnectionStatus.Connected || board is not LiteNet2Board liteNetBoard)
+        if (status == BoardConnectionStatus.Connected && board is LiteNet2Board liteNetBoard)
+        {
+            liteNetBoard.GetFirmwareVersion();
+            if (string.IsNullOrWhiteSpace(SerialNumber))
+            {
+                liteNetBoard.GetSerialNumber();
+            }
+
+            return;
+        }
+
+        if (_board is null)
         {
             return;
         }
 
-        liteNetBoard.GetFirmwareVersion();
-        if (string.IsNullOrWhiteSpace(SerialNumber))
+        _logger.LogWarning(
+            "Toletus connection lost ({Status}) for {TurnstileIp}; releasing SDK session for auto-reconnect.",
+            status,
+            board.Ip);
+
+        _ = Task.Run(async () =>
         {
-            liteNetBoard.GetSerialNumber();
-        }
+            try
+            {
+                await _gate.WaitAsync().ConfigureAwait(false);
+                try
+                {
+                    await DisconnectCoreAsync(CancellationToken.None).ConfigureAwait(false);
+                }
+                finally
+                {
+                    _gate.Release();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to release SDK session after connection loss.");
+            }
+        });
     }
 
     private void HandleResponse(LiteNet2Board board, LiteNet2Response response)

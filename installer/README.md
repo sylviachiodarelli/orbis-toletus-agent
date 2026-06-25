@@ -144,10 +144,31 @@ Abra http://127.0.0.1:5080 para configurar.
 | Senha da UI | `%ProgramData%\Orbis\ToletusAgent\setup-auth.json` |
 | Painel web | http://127.0.0.1:5080 |
 
-Reiniciar após mudar config manualmente:
+Reiniciar após mudar config manualmente (ou use **Reiniciar aplicativo** no painel):
 
 ```powershell
 Restart-Service OrbisToletusAgent
 ```
 
-Alterações feitas pela UI são salvas em `appsettings.json` e recarregadas automaticamente; reinicie o serviço se a conexão com a catraca não atualizar.
+Alterações feitas pela UI são salvas em `appsettings.json` e recarregadas automaticamente.
+
+## Recuperação automática (sem PowerShell)
+
+O agente tenta se recuperar sozinho quando a catraca ou o aplicativo travam:
+
+| Camada | Comportamento |
+|--------|----------------|
+| **SDK desconectado** | A cada ~30 s verifica; após **90 s** força reconexão com a catraca |
+| **Falhas repetidas** | Após **8** tentativas ou **15 min** desconectado, reinicia o processo |
+| **Serviço Windows** | Se o processo cair, o Windows reinicia o serviço em até **1 min** (configurado na instalação) |
+
+No painel http://127.0.0.1:5080 (dashboard), botões para usuário da academia:
+
+- **Reconectar catraca** — reconexão manual do SDK
+- **Reiniciar aplicativo** — reinicia o agente sem abrir PowerShell (aguarde ~1 min)
+
+Instalações antigas: reinstale o `.exe` por cima **ou** rode uma vez como Administrador:
+
+```powershell
+sc.exe failure OrbisToletusAgent reset= 86400 actions= restart/60000/restart/60000/restart/60000
+```

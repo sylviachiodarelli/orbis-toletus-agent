@@ -42,4 +42,17 @@ public sealed class AgentOptions
             "Orbis",
             "ToletusAgent",
             "setup-auth.json");
+
+    /// <summary>Monitora SDK desconectado e tenta reconectar/reiniciar sem PowerShell.</summary>
+    public bool SelfHealingEnabled { get; set; } = true;
+
+    public int SelfHealingCheckIntervalSeconds { get; set; } = 30;
+
+    /// <summary>Após N segundos com SDK desconectado, força disconnect+connect.</summary>
+    public int SdkForceReconnectAfterSeconds { get; set; } = 90;
+
+    public int MaxConsecutiveReconnectAttempts { get; set; } = 8;
+
+    /// <summary>Reinicia o processo do agente após N segundos desconectado (Windows Service recovery sobe de novo).</summary>
+    public int ApplicationRestartAfterSeconds { get; set; } = 900;
 }
